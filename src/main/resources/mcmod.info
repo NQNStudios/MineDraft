@@ -1,14 +1,14 @@
 [
 {
-  "modid": "examplemod",
-  "name": "Example Mod",
-  "description": "Example placeholder mod.",
+  "modid": "minedraft",
+  "name": "MineDraft",
+  "description": "Minecraft mod for procrastinating writers.",
   "version": "${version}",
   "mcversion": "${mcversion}",
-  "url": "",
+  "url": "http://github.com/NQNStudios/MineDraft",
   "updateUrl": "",
-  "authorList": ["ExampleDude"],
-  "credits": "The Forge and FML guys, for making this example",
+  "authorList": ["Nat Quayle Nelson"],
+  "credits": "",
   "logoFile": "",
   "screenshots": [],
   "dependencies": []
