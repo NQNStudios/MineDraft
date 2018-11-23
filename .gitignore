@@ -17,3 +17,6 @@ gradle-app.setting
 .project
 .settings/
 .vscode/
+
+bin/
+*.class
