@@ -49,7 +49,7 @@ public class MineDraft
     }
 
     @SubscribeEvent
-    public static void onTick(TickEvent.PlayerTickEvent evt)
+    public void onTick(TickEvent.PlayerTickEvent evt)
     {
         if (evt.side == Side.CLIENT && evt.phase == TickEvent.Phase.END)
         {
@@ -68,10 +68,14 @@ public class MineDraft
     @SubscribeEvent
     public void onPlayerAttemptChat(ClientChatEvent event)
     {
+        logger.debug("player attempted chat");
+        logger.debug(event.getMessage());
         if (draftMode)
         {
-            event.setCanceled(true);
-            core.process(event.getMessage());
+            if (event.getMessage().charAt(0) != '/') {
+                event.setCanceled(true);
+                core.process(event.getMessage());
+            }
         }
     }
 
