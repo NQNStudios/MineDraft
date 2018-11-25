@@ -117,6 +117,7 @@ public class MineDraft
 
             if (filePath.length() > 0) {
                 draftMode = true;
+                sender.sendMessage(new TextComponentString("Draft mode enabled!"));
                 core.openFile(filePath);
                 return;
             }
@@ -127,7 +128,6 @@ public class MineDraft
             else {
                 draftMode = true;
                 sender.sendMessage(new TextComponentString("Draft mode enabled!"));
-                core.openFile(filePath);
              }
         }
     }
