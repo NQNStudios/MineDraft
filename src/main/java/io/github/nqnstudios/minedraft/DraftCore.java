@@ -136,6 +136,9 @@ public class DraftCore {
         if (line > 0 && line <= lines.size()) {
             index = line - 1;
             output = lines.get(index);
+            if (output.trim().length() == 0) {
+                output = "[empty line]";
+            }
         }
     }
 
