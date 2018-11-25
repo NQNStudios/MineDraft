@@ -75,7 +75,6 @@ public class MineDraft
             if (event.getMessage().charAt(0) != '/') {
                 event.setCanceled(true);
                 core.processLine(event.getMessage());
-                output = core.takeOutput();
             }
         }
     }
