@@ -14,22 +14,40 @@ public class DraftCore {
         // Create a DraftCore and debug it in a repl
         DraftCore core = new DraftCore();
 
+        if (args.length > 0) {
+            core.openFile(DraftCore.joinTokens(args, 0, true));
+            core.dumpOutput();
+        }
+
         Scanner sc = new Scanner(System.in);
 
         while (sc.hasNextLine()) {
             String line = sc.nextLine();
-            core.process(line);
+
+            core.processLine(line);
             core.dumpOutput();
         }
+
+        sc.close();
     }
 
+    public void processLine(String line) {
+            if (line.contains(" ") ) {
+                String command = line.substring(0, line.indexOf(" "));
+                String message = line.substring(line.indexOf(" ")+1);
+                process(command, message);
+            } else if (line.length() > 0) {
+                process(line, "");
+            }
+
+    }
 
     public void clear() {
         filename = "";
         lines.clear();
     }
 
-    private String joinTokens(String[] tokens, int start, boolean toPath) {
+    public static String joinTokens(String[] tokens, int start, boolean toPath) {
         String joint = "";
         for (int i = start; i < tokens.length; ++i) {
             String token = tokens[i];
@@ -43,46 +61,72 @@ public class DraftCore {
         return joint;
     }
 
-    public void process(String message) {
-        String[] tokens = message.split(" ");
-        
-        switch (tokens[0]) {
+    public void openFile(String path) {
+        String fullPath = homedir;
+        fullPath += File.separator;
+        fullPath += path;
+
+        try (BufferedReader br = new BufferedReader(new FileReader(fullPath))) {
+            String line;
+            lines.clear();
+            while ((line = br.readLine()) != null) {
+                lines.add(line);
+            }
+            filename = fullPath;
+            selectLine(1);
+        } catch (Exception e) {
+            // If the file doesn't exist, try to open it for writing
+
+            filename = fullPath;
+            if (!writeToFile()) {
+                filename = "";
+                output = "Attempting to create new file " + filename + "failed: " + output;
+            }
+        }
+
+    }
+
+    public boolean writeToFile() {
+        try {
+            File fout = new File(filename);
+            FileOutputStream fos = new FileOutputStream(fout);
+    
+            BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos));
+    
+            for (int i = 0; i < lines.size(); i++) {
+                bw.write(lines.get(i));
+                bw.newLine();
+            }
+    
+            bw.close();
+            return true;
+        } catch (Exception e) {
+            output = "Save to " + filename + " failed: " + e.getClass().getName() + e.getMessage();
+            return false;
+        }
+    }
+
+    public void process(String command, String message) {
+        switch (command) {
             case "open":
-                if (tokens.length >= 2) {
-                    // Assume the file path might be all of the remaining tokens, including spaces
-                    String path = homedir;
-                    path += File.separator;
-                    path += joinTokens(tokens, 1, true); 
-
-                    System.out.println(path);
-
-                    try (BufferedReader br = new BufferedReader(new FileReader(path))) {
-                        String line;
-                        lines.clear();
-                        while ((line = br.readLine()) != null) {
-                            lines.add(line);
-                        }
-                        filename = path;
-                        selectLine(1);
-                    } catch (Exception e) {
-                        output = "Failed: " + e.getClass().getName() + e.getMessage();
-                    }
+                if (message.length() > 0) {
+                    openFile(message);
                 }
                 else {
-                    // TODO trying to open without a filename!!
+                    output = "Failed: you must specify a filename to open.";
                 }
                 break;
             case "close":
                 clear();
                 break;
 
+                // Everything that's not "open" or "close" is an editor command
             default:
                 if (filename.length() == 0) {
-                    // TODO trying to edit without a file open! Bad!
+                    output = "Failed: Can't edit without a file open!";
                 }
                 else {
-                    // TODO run the editor thing
-                    editorProcess(tokens);
+                    editorProcess(command, message);
                 }
 
         }
@@ -121,20 +165,20 @@ public class DraftCore {
         output = "";
     }
 
-    private void editorProcess(String[] tokens) {
-        String joint = joinTokens(tokens, 1, false);
-        switch (tokens[0]) {
+    private void editorProcess(String command, String message) {
+        boolean printTheLine = true;
+        switch (command) {
             // Allow up/down [n]
             case "up":
             case "down":
             case "goto":
                 int num = 1;
-                if (tokens.length == 2) {
-                    num = Integer.parseInt(tokens[1]);
+                if (message.length() > 0) {
+                    num = Integer.parseInt(message);
                 }
-                if (tokens[0].equals("up")) {
+                if (command.equals("up")) {
                     up(num);
-                } else if (tokens[0].equals("down")) {
+                } else if (command.equals("down")) {
                     down(num);
                 } else {
                     selectLine(num);
@@ -142,9 +186,9 @@ public class DraftCore {
                 break;
             // Allow vim-style substitution in the limited format s foo/bar
             case "s":
-                String[] two = joint.split("/");
+                String[] two = message.split("/");
+                // TODO escape sequences should probably be possible here
                 if (two.length != 2) {
-                    // TODO v bad!
                     output = "You didn't provide 2 strings (one to find/one to replace with) ";
                 }
                 else {
@@ -153,51 +197,48 @@ public class DraftCore {
                 break;
             // Allow full-scale line replacement
             case "S":
-                    lines.set(index, joint);
+                    lines.set(index, message);
                 break;
             // Allow i/insertion at start of line
             case "i":
-                lines.set(index, joint + lines.get(index));
+            case "I":
+                lines.set(index, message + " " + lines.get(index));
                 break;
             // Allow a/append at end of line
             case "a":
-                lines.set(index, lines.get(index) + joint);
+            case "A":
+                lines.set(index, lines.get(index) + " " + message);
                 break;
             // Allow O to insert line above this one
             case "O":
-                lines.add(index, joint);
+                lines.add(index, message);
                 break;
             // Allow o to insert line after this one
             case "o":
-                lines.add(index+1, joint);
-                selectLine(index+2);
+                int indexToAdd = Math.min(lines.size(), index+1);
+                lines.add(indexToAdd, message);
+                selectLine(indexToAdd+1);
                 break;
             
             // Allow line deletion
             case "d":
                 lines.remove(index);
                 break;
+
+                // TODO allow line joining (with a number of lines to join? (cap it as lines.size()))
+
+            default: 
+                output = "Not a command: " + command;
+                printTheLine = false;
+                break;
         }
 
-        //Print the current line now
-        selectLine(index+1);
+        if (printTheLine) {
+            //Print the current line now
+            selectLine(index+1);
+        }
         // After all editor commands, save
-
-        try {
-            File fout = new File(filename);
-            FileOutputStream fos = new FileOutputStream(fout);
-    
-            BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos));
-    
-            for (int i = 0; i < lines.size(); i++) {
-                bw.write(lines.get(i));
-                bw.newLine();
-            }
-    
-            bw.close();
-        } catch (Exception e) {
-            output = "MAJOR ERROR! SAVE FAILED!";
-        }
+        writeToFile();
     }
 
     String homedir = System.getProperty("user.home");

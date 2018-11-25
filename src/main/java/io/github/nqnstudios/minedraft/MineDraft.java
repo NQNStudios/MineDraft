@@ -56,7 +56,7 @@ public class MineDraft
             // Update the DraftCore
             core.tick();
 
-            // TODO check for messages out of the DraftCore
+            // check for messages out of the DraftCore
             String output = core.takeOutput();
             if (output.length() > 0) {
                 evt.player.sendMessage(new TextComponentString(output));
@@ -74,7 +74,8 @@ public class MineDraft
         {
             if (event.getMessage().charAt(0) != '/') {
                 event.setCanceled(true);
-                core.process(event.getMessage());
+                core.processLine(event.getMessage());
+                output = core.takeOutput();
             }
         }
     }
@@ -101,20 +102,33 @@ public class MineDraft
         @Override
         public List<String> getTabCompletions(MinecraftServer server, ICommandSender sender, String[] args, @Nullable BlockPos pos)
         {
+            String argsStr = "";
+            for (String arg : args) {
+                argsStr += arg + ", ";
+            }
+            sender.sendMessage(new TextComponentString(argsStr));
+
             return Collections.emptyList();
         }
 
         @Override
         public void execute(MinecraftServer server, ICommandSender sender, String[] args) throws CommandException
         {
-            if (draftMode){
-                draftMode = false;
-                core.clear();
-                 sender.sendMessage(new TextComponentString("Draft mode disabled!"));
+            String filePath = DraftCore.joinTokens(args, 0, true);
+
+            if (filePath.length() > 0) {
+                draftMode = true;
+                core.openFile(filePath);
+                return;
             }
-             else {
-                 draftMode = true;
-                 sender.sendMessage(new TextComponentString("Draft mode enabled!"));
+            if (draftMode) {
+                draftMode = false;
+                sender.sendMessage(new TextComponentString("Draft mode disabled!"));
+            }
+            else {
+                draftMode = true;
+                sender.sendMessage(new TextComponentString("Draft mode enabled!"));
+                core.openFile(filePath);
              }
         }
     }
